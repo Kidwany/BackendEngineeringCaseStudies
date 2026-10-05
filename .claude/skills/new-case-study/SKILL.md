@@ -30,18 +30,19 @@ problem in one question.
    (`01-idempotent-payments`, `02-outbox-pattern`). The new one gets the next
    number and a short slug (2-4 words) derived from the problem.
 2. Ports come from the number `NN`, so several case studies can run at once:
-    - PostgreSQL host port: `54NN` (case study 03 → `5403`)
-    - Application port: `81NN` (case study 03 → `8103`)
+  - PostgreSQL host port: `54NN` (case study 03 → `5403`)
+  - Application port: `81NN` (case study 03 → `8103`)
 3. Maven coordinates:
-    - `groupId`: reuse the groupId from an existing case study's `pom.xml`. If
-      this is the first one, use `com.kidwany.casestudies`.
-    - `artifactId`: the slug without the number (`idempotent-payments`).
-    - Base package: groupId + slug with hyphens removed
-      (`com.kidwany.casestudies.idempotentpayments`).
+  - `groupId`: reuse the groupId from an existing case study's `pom.xml`. If
+    this is the first one, use `com.kidwany.casestudies`.
+  - `artifactId`: the slug without the number (`idempotent-payments`).
+  - Base package: groupId + slug with hyphens removed
+    (`com.kidwany.casestudies.idempotentpayments`).
 
-## Step 2: Resolve versions now, don't hardcode them
+## Step 2: Resolve versions
 
-Versions go stale, so look them up at scaffold time instead of trusting memory:
+Java is fixed at 21. Spring Boot and PostgreSQL versions go stale, so look them
+up at scaffold time instead of trusting memory:
 
 ```bash
 curl -s -H 'Accept: application/json' https://start.spring.io/metadata/client
@@ -49,9 +50,8 @@ curl -s -H 'Accept: application/json' https://start.spring.io/metadata/client
 
 From the response take:
 
-- **Java**: the newest LTS release in `javaVersion.values` (LTS releases are 17,
-  21, 25, then every two years). Prefer LTS over a newer non-LTS release because
-  tooling and libraries support it properly.
+- **Java**: always **21** (LTS). This is the repo's fixed choice; don't
+  substitute a newer version even if one is available.
 - **Spring Boot**: the default `bootVersion` (the current stable release; never a
   SNAPSHOT, milestone, or RC).
 
@@ -68,7 +68,7 @@ across major versions.
 curl -s https://start.spring.io/starter.zip \
   -d type=maven-project \
   -d language=java \
-  -d javaVersion=<JAVA_LTS> \
+  -d javaVersion=21 \
   -d groupId=<GROUP_ID> \
   -d artifactId=<ARTIFACT_ID> \
   -d name=<ARTIFACT_ID> \
@@ -99,7 +99,49 @@ If start.spring.io is unreachable, write the `pom.xml` by hand with
 repo parent, so it's fine) and the same dependencies, and tell the user the
 versions were not verified online.
 
-## Step 4: Add docker-compose.yml
+## Step 4: Add Dockerfile and docker-compose.yml
+
+The case study must be runnable by someone with only Docker installed (no JDK,
+no Maven, no IDE): `docker compose up --build` builds the app inside a container
+and starts it next to Postgres. Java developers can still run just Postgres in
+Docker and the app from their IDE.
+
+Create `<NN-slug>/Dockerfile` (multi-stage: the JDK image builds the jar, the
+smaller JRE image runs it):
+
+```dockerfile
+FROM eclipse-temurin:21-jdk AS build
+WORKDIR /app
+COPY .mvn/ .mvn/
+COPY mvnw pom.xml ./
+RUN chmod +x mvnw && ./mvnw -q -B dependency:go-offline
+COPY src/ src/
+RUN ./mvnw -q -B -DskipTests package
+
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+RUN useradd --system --no-create-home app
+COPY --from=build /app/target/*.jar app.jar
+USER app
+EXPOSE 81NN
+ENTRYPOINT ["java", "-jar", "app.jar"]
+```
+
+- Dependencies are resolved in their own layer before `src/` is copied, so
+  rebuilds after a code change don't re-download everything.
+- Tests are skipped in the image build because the integration tests use
+  Testcontainers, which needs a Docker daemon that isn't available inside
+  `docker build`. Tests run with `./mvnw verify` on the host.
+
+Create `<NN-slug>/.dockerignore`:
+
+```
+target/
+.git/
+.idea/
+*.iml
+.vscode/
+```
 
 Create `<NN-slug>/docker-compose.yml`:
 
@@ -123,6 +165,16 @@ services:
       timeout: 3s
       retries: 10
 
+  app:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/app
+    ports:
+      - "81NN:81NN"
+
 volumes:
   pgdata:
 ```
@@ -134,8 +186,14 @@ Notes:
 - The volume mount path depends on the Postgres version: `/var/lib/postgresql`
   for 18 and newer, `/var/lib/postgresql/data` for 17 and older. Use the right
   one for the version you picked.
-- Only Postgres runs in Docker. The app runs from the IDE or `./mvnw`, which
-  keeps the debug loop fast.
+- Inside the compose network the app reaches the database at `postgres:5432`
+  (service name, container port), which is why `SPRING_DATASOURCE_URL` overrides
+  the `localhost:54NN` default from `application.yml`. The default stays as is
+  so running from the IDE keeps working.
+- Two ways to run, both documented in the case study README:
+  - Everything in Docker: `docker compose up --build`
+  - Development: `docker compose up -d postgres`, then run the app from the IDE
+    or `./mvnw spring-boot:run` for a fast debug loop.
 
 ## Step 5: Configure the application
 
@@ -376,7 +434,15 @@ Aggregates, value objects, and domain events, in the ubiquitous language.
 Which ports exist and which adapters implement them.
 
 ## Run it
-    docker compose up -d
+Only Docker is required:
+
+    docker compose up --build
+
+Stop with `docker compose down` (add `-v` to also wipe the database).
+
+For development (JDK 21 required), run only the database in Docker:
+
+    docker compose up -d postgres
     ./mvnw spring-boot:run
 
 App: http://localhost:81NN  |  Postgres: localhost:54NN (app/app/app)
@@ -385,7 +451,8 @@ App: http://localhost:81NN  |  Postgres: localhost:54NN (app/app/app)
 Table of endpoints: method, path, purpose.
 
 ## Try it
-Example requests that reproduce the problem and show the fix.
+Copy-pasteable `curl` commands that reproduce the problem and show the fix,
+with the expected response under each, so no Java knowledge is needed to test.
 
 ## Notes and trade-offs
 What this solution costs, and alternatives.
@@ -402,16 +469,73 @@ new one (number, title, one-line problem, link to the folder). If the root
 README doesn't exist, create a minimal one with a title, one sentence about the
 repo, and the table.
 
-## Step 10: Verify before reporting done
+## Step 10: Register the pom as a Maven project and compile
+
+Because there is no root `pom.xml`, IntelliJ IDEA does not notice a new case
+study on its own; its `pom.xml` has to be registered (the equivalent of
+right-click → "Add as Maven Project"). Do this for the user every time.
+
+1. **Register the pom.** If a `.idea/` folder exists at the repo root, open
+   `.idea/misc.xml` and add the new pom to the `MavenProjectsManager`
+   component's `originalFiles` list, keeping every entry already there:
+
+   ```xml
+   <component name="MavenProjectsManager">
+     <option name="originalFiles">
+       <list>
+         <option value="$PROJECT_DIR$/01-existing-case/pom.xml" />
+         <option value="$PROJECT_DIR$/<NN-slug>/pom.xml" />
+       </list>
+     </option>
+   </component>
+   ```
+
+   If the component doesn't exist yet, add it inside `<project>`. If `misc.xml`
+   doesn't exist but `.idea/` does, create it:
+
+   ```xml
+   <?xml version="1.0" encoding="UTF-8"?>
+   <project version="4">
+     <component name="MavenProjectsManager">
+       <option name="originalFiles">
+         <list>
+           <option value="$PROJECT_DIR$/<NN-slug>/pom.xml" />
+         </list>
+       </option>
+     </component>
+   </project>
+   ```
+
+   If there is no `.idea/` folder (project not opened in IntelliJ yet, or a
+   different IDE), skip the file edit and tell the user to right-click the new
+   `pom.xml` → "Add as Maven Project" (VS Code picks up the pom automatically).
+
+2. **Compile.** From inside the new folder:
+
+   ```bash
+   ./mvnw -B clean compile
+   ```
+
+   This downloads the dependencies and must end with `BUILD SUCCESS`. Fix any
+   error before moving on; never report a scaffold that doesn't compile.
+
+In the final report, tell the user the pom was registered and that IntelliJ may
+need "Reload All Maven Projects" (Maven tool window) to show it.
+
+## Step 11: Verify before reporting done
 
 From inside the new folder:
 
 ```bash
-docker compose up -d --wait
+docker compose up -d --wait postgres
 ./mvnw -q verify
+docker compose up -d --build --wait
+curl -fsS http://localhost:81NN/actuator/health
+docker compose down
 ```
 
-Both must succeed. `verify` proves the project compiles, Flyway runs, and the
+All must succeed. The last three prove the Docker-only path works: the image
+builds, the container starts, connects to Postgres, and reports `UP`. `verify` proves the project compiles, Flyway runs, and the
 Spring context starts against Postgres. If Docker isn't available in the current
 environment, run `./mvnw -q -DskipTests package` at minimum and tell the user
 plainly which checks were skipped.

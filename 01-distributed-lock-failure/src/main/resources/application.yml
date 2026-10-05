@@ -5,6 +5,10 @@ spring:
     url: jdbc:postgresql://localhost:5401/app
     username: app
     password: app
+  data:
+    redis:
+      host: localhost
+      port: 6301
   jpa:
     hibernate:
       ddl-auto: validate

@@ -44,7 +44,7 @@ adapters implement them.
 
 ## Run it
 
-With a JDK 21 on the machine — Postgres in Docker, app on the host, which is the
+With a JDK 21 on the machine — Postgres and Redis in Docker, app on the host, which is the
 fast debug loop:
 
     docker compose up -d
@@ -56,13 +56,13 @@ multi-stage `Dockerfile`:
     docker compose --profile app up -d --build
 
 The `app` service sits behind a compose profile, so the plain `docker compose up -d`
-above still starts Postgres only and leaves port 8101 free for `./mvnw`. Pick one
+above still starts only Postgres and Redis and leaves port 8101 free for `./mvnw`. Pick one
 or the other; both bind 8101.
 
 Stop either with `docker compose --profile app down` (add `-v` to drop the
 Postgres volume).
 
-App: http://localhost:8101  |  Postgres: localhost:5401 (app/app/app)
+App: http://localhost:8101  |  Postgres: localhost:5401 (app/app/app)  |  Redis: localhost:6301
 
 ## API
 
