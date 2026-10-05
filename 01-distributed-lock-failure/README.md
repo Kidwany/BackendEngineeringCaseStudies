@@ -44,25 +44,35 @@ adapters implement them.
 
 ## Run it
 
-With a JDK 21 on the machine — Postgres and Redis in Docker, app on the host, which is the
+A Maven multi-module build with three independent Spring Boot apps:
+
+| App | Module | Port | Depends on |
+|---|---|---|---|
+| Payout Platform | `payout-platform` | 8101 | Postgres |
+| Payout Worker | `payout-worker` | 8102 | Redis |
+| Fake Bank Service | `fake-bank` | 8103 | — |
+
+With a JDK 21 on the machine — Postgres and Redis in Docker, apps on the host, which is the
 fast debug loop:
 
     docker compose up -d
-    ./mvnw spring-boot:run
+    ./mvnw -pl payout-platform spring-boot:run
+    ./mvnw -pl payout-worker spring-boot:run
+    ./mvnw -pl fake-bank spring-boot:run
 
-Without a JDK or Maven on the machine — everything in Docker, built by the
-multi-stage `Dockerfile`:
+Without a JDK or Maven on the machine — everything in Docker, each app built by the
+shared multi-stage `Dockerfile` (compose passes the module as the `MODULE` build arg):
 
     docker compose --profile app up -d --build
 
-The `app` service sits behind a compose profile, so the plain `docker compose up -d`
-above still starts only Postgres and Redis and leaves port 8101 free for `./mvnw`. Pick one
-or the other; both bind 8101.
+The app services sit behind a compose profile, so the plain `docker compose up -d`
+above still starts only Postgres and Redis and leaves ports 8101–8103 free for `./mvnw`.
+Pick one or the other; both bind the same ports.
 
 Stop either with `docker compose --profile app down` (add `-v` to drop the
 Postgres volume).
 
-App: http://localhost:8101  |  Postgres: localhost:5401 (app/app/app)  |  Redis: localhost:6301
+Postgres: localhost:5401 (app/app/app)  |  Redis: localhost:6301
 
 ## API
 
