@@ -1,4 +1,4 @@
-package com.kidwany.casestudies.distributedlockfailure;
+package com.casestudies.distributedlockfailure;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

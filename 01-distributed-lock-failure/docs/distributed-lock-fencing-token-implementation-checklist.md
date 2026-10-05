@@ -29,16 +29,20 @@ Mark each item when it is actually completed and verified.
 
 ## Phase 2 — Architecture Skeleton
 
-- [ ] Create settlement bounded context/package.
-- [ ] Create domain layer/package.
-- [ ] Create application layer/package.
-- [ ] Create infrastructure layer/package.
-- [ ] Create web adapter layer/package.
-- [ ] Verify domain has no Spring dependencies.
-- [ ] Verify domain has no Redis dependencies.
-- [ ] Verify domain has no JPA/Hibernate dependencies where avoidable.
-- [ ] Verify infrastructure depends inward through ports.
-- [ ] Verify controller contains no settlement business logic.
+- [x] Create settlement bounded context/package.
+- [x] Create domain layer/package.
+- [x] Create application layer/package.
+- [x] Create infrastructure layer/package.
+- [x] Create web adapter layer/package.
+- [x] Verify domain has no Spring dependencies.
+- [x] Verify domain has no Redis dependencies.
+- [x] Verify domain has no JPA/Hibernate dependencies where avoidable.
+- [x] Verify infrastructure depends inward through ports.
+- [x] Verify controller contains no settlement business logic.
+
+Layout: `settlement/{domain, application, adapter/in/api, adapter/out/{persistence, redis}, config}`.
+Infrastructure is `adapter/out` and the web adapter is `adapter/in/api`, following the repo's ports-and-adapters naming.
+The verification items are enforced by `ArchitectureTest` (ArchUnit), and each rule was checked against deliberately violating classes.
 
 ---
 

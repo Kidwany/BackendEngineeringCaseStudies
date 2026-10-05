@@ -34,10 +34,10 @@ problem in one question.
   - Application port: `81NN` (case study 03 → `8103`)
 3. Maven coordinates:
   - `groupId`: reuse the groupId from an existing case study's `pom.xml`. If
-    this is the first one, use `com.kidwany.casestudies`.
+    this is the first one, use `com.casestudies`.
   - `artifactId`: the slug without the number (`idempotent-payments`).
   - Base package: groupId + slug with hyphens removed
-    (`com.kidwany.casestudies.idempotentpayments`).
+    (`com.casestudies.idempotentpayments`).
 
 ## Step 2: Resolve versions
 
@@ -232,9 +232,13 @@ the problem's domain is implemented.
 ## Step 6: Lay out the packages
 
 Every case study uses strict hexagonal architecture (ports and adapters) with
-DDD tactical patterns. Create this structure under the base package, with a
-`package-info.java` in each leaf package so the layout exists in git before any
-class does (don't generate empty placeholder classes):
+DDD tactical patterns. This is the target layout under the base package. Don't
+create it up front: a package comes into existence with its first real class,
+so the tree never holds empty folders, placeholder classes, or one
+`package-info.java` per package. The single exception is one
+`package-info.java` at the base package whose Javadoc lists each package and
+what belongs in it (one line each, matching the tree below), so the intended
+layout is documented in code before the packages exist:
 
 ```
 <base package>/
@@ -310,9 +314,10 @@ HTTP exists; nothing inward knows about status codes, JSON, or URLs.
   `500` without leaking internals. Domain exceptions stay HTTP-unaware; the
   mapping lives here.
 
-At scaffold time, create the four packages and the `@RestControllerAdvice` with
-the validation and generic fallback handlers. Add controllers when the use
-cases they call exist.
+At scaffold time, the only API package created is `error/`, holding the
+`@RestControllerAdvice` with the validation and generic fallback handlers.
+`controller/`, `dto/`, and `mapper/` appear with the first controller, once the
+use cases it calls exist.
 
 ### DDD rules for the domain
 

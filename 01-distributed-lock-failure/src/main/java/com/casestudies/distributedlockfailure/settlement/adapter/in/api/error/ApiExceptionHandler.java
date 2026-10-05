@@ -1,4 +1,4 @@
-package com.kidwany.casestudies.distributedlockfailure.adapter.in.api.error;
+package com.casestudies.distributedlockfailure.settlement.adapter.in.api.error;
 
 import java.net.URI;
 import java.util.LinkedHashMap;

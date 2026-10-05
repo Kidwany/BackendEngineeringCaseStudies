@@ -8,7 +8,7 @@
 		<version>4.1.1</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>com.kidwany.casestudies</groupId>
+	<groupId>com.casestudies</groupId>
 	<artifactId>distributed-lock-failure</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>distributed-lock-failure</name>
