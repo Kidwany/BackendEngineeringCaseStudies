@@ -48,11 +48,24 @@ A Maven multi-module build with three independent Spring Boot apps:
 
 | App | Module | Port | Depends on |
 |---|---|---|---|
-| Payout Platform | `payout-platform` | 8101 | Postgres |
-| Payout Worker | `payout-worker` | 8102 | Redis |
-| Fake Bank Service | `fake-bank` | 8103 | — |
+| Payout Platform | `payout-platform` | 8101 | `payout-postgres`, Kafka |
+| Payout Worker | `payout-worker` | 8102 | Redis, Kafka, Fake Bank (HTTP) |
+| Fake Bank Service | `fake-bank` | 8103 | `bank-postgres` |
 
-With a JDK 21 on the machine — Postgres and Redis in Docker, apps on the host, which is the
+Infrastructure, all in `docker-compose.yml`:
+
+| Service | Host address | In-network address | Credentials |
+|---|---|---|---|
+| `payout-postgres` | localhost:5401 | payout-postgres:5432 | db/user/password `payout` |
+| `bank-postgres` | localhost:5403 | bank-postgres:5432 | db/user/password `bank` |
+| `redis` | localhost:6301 | redis:6379 | — |
+| `kafka` (KRaft, single node) | localhost:9401 | kafka:29092 | — |
+
+The bank is an external system, so it gets its own database rather than a schema in the
+platform's. Kafka advertises two listeners: `localhost:9401` for apps run with `./mvnw`,
+and `kafka:29092` for apps running in compose.
+
+With a JDK 21 on the machine — infrastructure in Docker, apps on the host, which is the
 fast debug loop:
 
     docker compose up -d
@@ -66,13 +79,11 @@ shared multi-stage `Dockerfile` (compose passes the module as the `MODULE` build
     docker compose --profile app up -d --build
 
 The app services sit behind a compose profile, so the plain `docker compose up -d`
-above still starts only Postgres and Redis and leaves ports 8101–8103 free for `./mvnw`.
+above still starts only the infrastructure and leaves ports 8101–8103 free for `./mvnw`.
 Pick one or the other; both bind the same ports.
 
-Stop either with `docker compose --profile app down` (add `-v` to drop the
-Postgres volume).
-
-Postgres: localhost:5401 (app/app/app)  |  Redis: localhost:6301
+Stop either with `docker compose --profile app down` (add `-v` to drop both
+Postgres volumes).
 
 ## API
 

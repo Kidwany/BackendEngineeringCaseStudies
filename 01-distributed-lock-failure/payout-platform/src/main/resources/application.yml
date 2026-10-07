@@ -2,13 +2,15 @@ spring:
   application:
     name: payout-platform
   datasource:
-    url: jdbc:postgresql://localhost:5401/app
-    username: app
-    password: app
+    url: jdbc:postgresql://localhost:5401/payout
+    username: payout
+    password: payout
   jpa:
     hibernate:
       ddl-auto: validate
     open-in-view: false
+  kafka:
+    bootstrap-servers: localhost:9401
 
 server:
   port: 8101
@@ -18,3 +20,6 @@ management:
     web:
       exposure:
         include: health,info,metrics
+  endpoint:
+    health:
+      show-components: always

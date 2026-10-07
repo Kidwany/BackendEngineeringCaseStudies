@@ -15,14 +15,14 @@ Mark each item only after it is implemented and verified.
 
 ## Phase 2 — Infrastructure
 
-- [ ] Add PostgreSQL for Payout Platform.
-- [ ] Add PostgreSQL for Fake Bank.
-- [ ] Add Redis.
-- [ ] Add Kafka.
-- [ ] Verify Docker Compose networking.
-- [ ] Verify both DBs start.
-- [ ] Verify Redis starts.
-- [ ] Verify Kafka starts.
+- [x] Add PostgreSQL for Payout Platform.
+- [x] Add PostgreSQL for Fake Bank.
+- [x] Add Redis.
+- [x] Add Kafka.
+- [x] Verify Docker Compose networking.
+- [x] Verify both DBs start.
+- [x] Verify Redis starts.
+- [x] Verify Kafka starts.
 
 ## Phase 3 — Flyway / Hibernate
 
@@ -90,112 +90,112 @@ Mark each item only after it is implemented and verified.
 
 ## Phase 10 — Kafka Consumer
 
-- [x] Configure consumer group.
-- [x] Consume PayoutBatchReady.
-- [x] Include event ID.
-- [x] Include batch ID.
-- [x] Include merchant ID.
-- [x] Include amount/currency.
-- [x] Verify worker receives message.
+- [ ] Configure consumer group.
+- [ ] Consume PayoutBatchReady.
+- [ ] Include event ID.
+- [ ] Include batch ID.
+- [ ] Include merchant ID.
+- [ ] Include amount/currency.
+- [ ] Verify worker receives message.
 
 ## Phase 11 — Fake Bank Application
 
-- [x] Create separate Spring Boot service.
-- [x] Add REST controller.
-- [x] Add JPA.
-- [x] Add Flyway.
-- [x] Keep service intentionally small.
+- [ ] Create separate Spring Boot service.
+- [ ] Add REST controller.
+- [ ] Add JPA.
+- [ ] Add Flyway.
+- [ ] Keep service intentionally small.
 
 ## Phase 12 — Fake Bank Schema
 
-- [x] Create bank_payouts table.
-- [x] Add payout_batch_id.
-- [x] Add merchant_id.
-- [x] Add amount.
-- [x] Add currency.
-- [x] Add idempotency_key.
-- [x] Add worker_id.
-- [x] Add received_at.
-- [x] Add status.
-- [x] Do NOT enforce idempotency yet.
+- [ ] Create bank_payouts table.
+- [ ] Add payout_batch_id.
+- [ ] Add merchant_id.
+- [ ] Add amount.
+- [ ] Add currency.
+- [ ] Add idempotency_key.
+- [ ] Add worker_id.
+- [ ] Add received_at.
+- [ ] Add status.
+- [ ] Do NOT enforce idempotency yet.
 
 ## Phase 13 — Fake Bank API
 
-- [x] Add `POST /api/bank/payouts`.
-- [x] Persist every request in broken mode.
-- [x] Return payout ID.
-- [x] Verify duplicate requests create duplicate rows.
+- [ ] Add `POST /api/bank/payouts`.
+- [ ] Persist every request in broken mode.
+- [ ] Return payout ID.
+- [ ] Verify duplicate requests create duplicate rows.
 
 ## Phase 14 — Fake Bank Behavior Modes
 
-- [x] Add NORMAL.
-- [x] Add DELAY_RESPONSE.
-- [x] Add PROCESS_THEN_DELAY_RESPONSE.
-- [x] Add RETURN_500.
-- [x] Add TIMEOUT.
-- [x] Make delay configurable.
+- [ ] Add NORMAL.
+- [ ] Add DELAY_RESPONSE.
+- [ ] Add PROCESS_THEN_DELAY_RESPONSE.
+- [ ] Add RETURN_500.
+- [ ] Add TIMEOUT.
+- [ ] Make delay configurable.
 
 ## Phase 15 — Bank Adapter
 
-- [x] Define BankPayoutPort.
-- [x] Implement HTTP adapter.
-- [x] Send batch ID.
-- [x] Send merchant ID.
-- [x] Send amount/currency.
-- [x] Prepare Idempotency-Key support.
-- [x] Keep idempotency disabled initially.
+- [ ] Define BankPayoutPort.
+- [ ] Implement HTTP adapter.
+- [ ] Send batch ID.
+- [ ] Send merchant ID.
+- [ ] Send amount/currency.
+- [ ] Prepare Idempotency-Key support.
+- [ ] Keep idempotency disabled initially.
 
 ## Phase 16 — Redis Lease
 
-- [x] Define DistributedLeasePort.
-- [x] Implement Redis adapter.
-- [x] Use `payout:batch:{batchId}`.
-- [x] Set TTL to 10 seconds for demo.
-- [x] Use unique owner ID.
-- [x] Prevent one owner from deleting another owner's lock.
-- [x] Verify expiration.
+- [ ] Define DistributedLeasePort.
+- [ ] Implement Redis adapter.
+- [ ] Use `payout:batch:{batchId}`.
+- [ ] Set TTL to 10 seconds for demo.
+- [ ] Use unique owner ID.
+- [ ] Prevent one owner from deleting another owner's lock.
+- [ ] Verify expiration.
 
 ## Phase 17 — Dispatch Attempt History
 
-- [x] Persist worker ID.
-- [x] Persist batch ID.
-- [x] Persist strategy.
-- [x] Persist lease owner.
-- [x] Add nullable fencing token.
-- [x] Persist started_at.
-- [x] Persist lease_expires_at.
-- [x] Persist validation_completed_at.
-- [x] Persist bank_request_sent_at.
-- [x] Persist completed_at.
-- [x] Persist final status.
+- [ ] Persist worker ID.
+- [ ] Persist batch ID.
+- [ ] Persist strategy.
+- [ ] Persist lease owner.
+- [ ] Add nullable fencing token.
+- [ ] Persist started_at.
+- [ ] Persist lease_expires_at.
+- [ ] Persist validation_completed_at.
+- [ ] Persist bank_request_sent_at.
+- [ ] Persist completed_at.
+- [ ] Persist final status.
 
 ## Phase 18 — Broken Worker Strategy
 
-- [x] Worker acquires lease.
-- [x] Worker loads payout.
-- [x] Worker validates payout.
-- [x] Worker performs final ownership/state check.
-- [x] Worker prepares HTTP request.
-- [x] Worker can pause after final check.
-- [x] Worker resumes from exact pause point.
-- [x] Worker sends HTTP request without re-running validation.
+- [ ] Worker acquires lease.
+- [ ] Worker loads payout.
+- [ ] Worker validates payout.
+- [ ] Worker performs final ownership/state check.
+- [ ] Worker prepares HTTP request.
+- [ ] Worker can pause after final check.
+- [ ] Worker resumes from exact pause point.
+- [ ] Worker sends HTTP request without re-running validation.
 
 ## Phase 19 — Broken Scenario
 
-- [x] Start Worker A.
-- [x] Worker A acquires lease.
-- [x] Worker A passes validation.
-- [x] Worker A pauses after validation.
-- [x] Keep A paused past lease TTL.
-- [x] Confirm lease expires.
-- [x] Start Worker B.
-- [x] Worker B acquires lease.
-- [x] Worker B calls Fake Bank.
-- [x] Fake Bank persists first payout.
-- [x] Worker B completes.
-- [x] Resume Worker A.
-- [x] Worker A sends stale prepared request.
-- [x] Fake Bank persists second payout.
+- [ ] Start Worker A.
+- [ ] Worker A acquires lease.
+- [ ] Worker A passes validation.
+- [ ] Worker A pauses after validation.
+- [ ] Keep A paused past lease TTL.
+- [ ] Confirm lease expires.
+- [ ] Start Worker B.
+- [ ] Worker B acquires lease.
+- [ ] Worker B calls Fake Bank.
+- [ ] Fake Bank persists first payout.
+- [ ] Worker B completes.
+- [ ] Resume Worker A.
+- [ ] Worker A sends stale prepared request.
+- [ ] Fake Bank persists second payout.
 
 ## Phase 20 — Verify Broken Result
 
