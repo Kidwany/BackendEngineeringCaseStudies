@@ -1,0 +1,1 @@
+-- Baseline migration. Tables arrive with the bank payout model.
