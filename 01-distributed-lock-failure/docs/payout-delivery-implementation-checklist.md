@@ -26,11 +26,11 @@ Mark each item only after it is implemented and verified.
 
 ## Phase 3 — Flyway / Hibernate
 
-- [ ] Add Flyway to Payout Platform.
-- [ ] Add Flyway to Fake Bank.
-- [ ] Set Hibernate to validate schema.
-- [ ] Disable Hibernate schema auto-creation as schema owner.
-- [ ] Verify migrations succeed.
+- [x] Add Flyway to Payout Platform.
+- [x] Add Flyway to Fake Bank.
+- [x] Set Hibernate to validate schema.
+- [x] Disable Hibernate schema auto-creation as schema owner.
+- [x] Verify migrations succeed.
 
 ## Phase 4 — Hexagonal Structure
 

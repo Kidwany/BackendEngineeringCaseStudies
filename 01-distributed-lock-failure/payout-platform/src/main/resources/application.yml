@@ -6,6 +6,7 @@ spring:
     username: payout
     password: payout
   jpa:
+    # Flyway owns the schema (db/migration). Hibernate only checks entities against it.
     hibernate:
       ddl-auto: validate
     open-in-view: false
