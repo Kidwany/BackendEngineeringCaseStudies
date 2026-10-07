@@ -79,7 +79,7 @@ High-level flow:
 Payout Platform
     |
     | DB transaction
-    | - create/update payout batch
+    | - create/update payout
     | - create outbox event
     v
 Outbox Publisher
@@ -106,28 +106,32 @@ Fake Bank PostgreSQL DB
 
 ## Business Scenario
 
-The platform prepares a merchant payout batch.
+The platform prepares a merchant payout.
 
 Example:
 
 ```text
 Merchant: M-1001
-Payout Batch: PB-9001
+Payout: PO-9001
 Amount: 252,000 EGP
 ```
 
 Inside one local DB transaction:
 
-1. Create/update payout batch.
+1. Create/update payout.
 2. Mark it READY.
-3. Insert outbox event `PayoutBatchReady`.
+3. Insert outbox event `PayoutReady`.
 4. Commit.
 
 The Outbox Publisher later publishes the event to Kafka.
 
 ---
 
-## Payout Batch
+## Payout
+
+A payout is one bank transfer to one merchant. Its amount may be the settled total of many
+upstream transactions (sales, refunds, fees), but those belong to another context and are not
+modelled here. One payout, one bank operation, one idempotency key.
 
 Suggested fields:
 
@@ -170,8 +174,8 @@ Example:
 
 ```text
 Event ID: EVT-5512
-Type: PayoutBatchReady
-Batch ID: PB-9001
+Type: PayoutReady
+Payout ID: PO-9001
 Amount: 252000
 Currency: EGP
 ```
@@ -195,7 +199,7 @@ Each execution should track:
 
 ```text
 workerId
-payoutBatchId
+payoutId
 leaseOwnerId
 fencingToken
 startedAt
@@ -214,7 +218,7 @@ Use a Redis-based lease behind a port.
 
 Conceptual key:
 
-`payout:batch:{batchId}`
+`payout:lease:{payoutId}`
 
 Demo TTL:
 
@@ -231,13 +235,13 @@ The broken scenario must intentionally create a duplicate payout in the Fake Ban
 ## Initial State
 
 ```text
-Payout Batch: PB-9001
+Payout: PO-9001
 Merchant: M-1001
 Amount: 252,000 EGP
 Status: READY
 ```
 
-A `PayoutBatchReady` outbox event is published to Kafka.
+A `PayoutReady` outbox event is published to Kafka.
 
 ## Worker A
 
@@ -336,7 +340,7 @@ Example request:
 
 ```json
 {
-  "payoutBatchId": "PB-9001",
+  "payoutId": "PO-9001",
   "merchantId": "M-1001",
   "amount": 252000,
   "currency": "EGP"
@@ -355,7 +359,7 @@ Suggested fields:
 
 ```text
 id
-payout_batch_id
+payout_id
 merchant_id
 amount
 currency
@@ -406,7 +410,7 @@ Suggested fields:
 
 ```text
 id
-payout_batch_id
+payout_id
 worker_id
 strategy
 lease_owner_id
@@ -447,7 +451,7 @@ Create a simple UI with:
 Recommended sections:
 
 1. Scenario Controls
-2. Payout Batch Details
+2. Payout Details
 3. Outbox Event
 4. Worker Timeline
 5. Redis Lease / Fencing Information
@@ -465,12 +469,12 @@ Example broken result:
 
 ```text
 Bank Payout #1
-Batch: PB-9001
+Payout: PO-9001
 Amount: 252,000 EGP
 Worker: B
 
 Bank Payout #2
-Batch: PB-9001
+Payout: PO-9001
 Amount: 252,000 EGP
 Worker: A
 DUPLICATE
@@ -478,13 +482,13 @@ DUPLICATE
 
 Duplicate rows should be visually highlighted.
 
-Duplicate detection must come from persisted data, for example by grouping on `payout_batch_id`.
+Duplicate detection must come from persisted data, for example by grouping on `payout_id`.
 
 Show summary:
 
 ```text
 Bank Requests Received: 2
-Unique Payout Batches: 1
+Unique Payouts: 1
 Duplicate Bank Payouts: 1
 Total Intended Amount: 252,000 EGP
 Total Actual Payout Amount: 504,000 EGP
@@ -505,7 +509,7 @@ Reset both systems without dropping databases.
 Payout Platform reset:
 
 - delete dispatch attempts
-- reset PB-9001 to READY
+- reset PO-9001 to READY
 - reset/recreate outbox state
 - clear Redis lease
 - reset fencing state when added
@@ -525,7 +529,7 @@ The same deterministic data must be recreated.
 Use exactly the same:
 
 ```text
-PB-9001
+PO-9001
 M-1001
 252,000 EGP
 Worker A
@@ -568,7 +572,7 @@ Use a stable business idempotency key for the external bank operation.
 
 Example:
 
-`payout:PB-9001`
+`payout:PO-9001`
 
 The key must be based on the payout business operation.
 
@@ -579,7 +583,7 @@ Do not use:
 - retry attempt ID
 - fencing token
 
-Both Worker A and Worker B must generate the same idempotency key for PB-9001.
+Both Worker A and Worker B must generate the same idempotency key for PO-9001.
 
 ---
 
@@ -590,7 +594,7 @@ Protected-mode behavior:
 First request:
 
 ```text
-Idempotency-Key: payout:PB-9001
+Idempotency-Key: payout:PO-9001
 ```
 
 Result:
@@ -602,7 +606,7 @@ Payout created
 Second request with the same key:
 
 ```text
-Idempotency-Key: payout:PB-9001
+Idempotency-Key: payout:PO-9001
 ```
 
 Result:
@@ -638,8 +642,8 @@ Duplicate Payouts: 0
 UI:
 
 ```text
-PB-9001   252,000 EGP   CREATED
-PB-9001                  IDEMPOTENT_REPLAY
+PO-9001   252,000 EGP   CREATED
+PO-9001                  IDEMPOTENT_REPLAY
 ```
 
 ---
@@ -721,7 +725,7 @@ Keep Kafka, Redis, HTTP, Spring Data, and JPA details outside the domain model.
 Commands:
 
 ```text
-CreatePayoutBatch
+CreatePayout
 RunBrokenScenario
 RunProtectedScenario
 ResetScenario
@@ -798,8 +802,8 @@ Example:
 ```text
 What will happen when you start this scenario?
 
-1. A merchant payout batch will be created.
-2. The batch and PayoutBatchReady outbox event will be committed atomically.
+1. A merchant payout will be created.
+2. The payout and PayoutReady outbox event will be committed atomically.
 3. The Outbox Publisher will publish the event to Kafka.
 4. Multiple payout workers will compete to process the payout.
 5. Worker A will intentionally pause after its final ownership check.
@@ -814,14 +818,14 @@ The explanation should change slightly depending on the selected strategy.
 
 ---
 
-# Step 1 — Prepare Payout Batch
+# Step 1 — Prepare Payout
 
 The frontend should NOT directly publish an outbox event.
 
 Instead expose a business action:
 
 ```text
-[ Prepare Payout Batch ]
+[ Prepare Payout ]
 ```
 
 When clicked:
@@ -829,13 +833,13 @@ When clicked:
 ```text
 Frontend
     ↓
-POST /api/payout-batches/prepare
+POST /api/payouts/prepare
     ↓
 Payout Application Service
     ↓
 Local DB Transaction
-    ├── create/update PB-9001
-    └── insert PayoutBatchReady outbox event
+    ├── create/update PO-9001
+    └── insert PayoutReady outbox event
     ↓
 COMMIT
 ```
@@ -843,14 +847,14 @@ COMMIT
 After this action, the UI should display persisted state such as:
 
 ```text
-Payout Batch:
-PB-9001
+Payout:
+PO-9001
 READY
 252,000 EGP
 
 Outbox Event:
 EVT-5512
-PayoutBatchReady
+PayoutReady
 PENDING
 ```
 
@@ -962,14 +966,14 @@ Provide:
 [ Run Scenario ]
 ```
 
-This button should be enabled only when a payout batch has been prepared.
+This button should be enabled only when a payout has been prepared.
 
 When clicked, the UI should execute the scenario using:
 
 ```text
 selected worker count
 selected scenario mode
-same deterministic payout batch
+same deterministic payout
 same configured timing
 ```
 
@@ -986,8 +990,8 @@ While the scenario runs, the UI should progressively show important state change
 Example:
 
 ```text
-Payout Batch
-PB-9001
+Payout
+PO-9001
 READY
 
 Outbox
@@ -996,7 +1000,7 @@ PENDING
 PUBLISHED
 
 Kafka
-PayoutBatchReady received
+PayoutReady received
 
 Workers
 Worker A — LEASE ACQUIRED
@@ -1037,20 +1041,20 @@ Example broken result:
 Bank Operations
 
 #1
-PB-9001
+PO-9001
 252,000 EGP
 Worker B
 CREATED
 
 #2
-PB-9001
+PO-9001
 252,000 EGP
 Worker A
 CREATED
 DUPLICATE
 ```
 
-Repeated payout batch rows must be highlighted visually.
+Repeated payout rows must be highlighted visually.
 
 Example styling ideas:
 
@@ -1121,14 +1125,14 @@ The reset flow should clean:
 ```text
 payout_dispatch_attempts
 outbox_events
-scenario payout batch data
+scenario payout data
 scenario execution history
 ```
 
 Then recreate:
 
 ```text
-PB-9001
+PO-9001
 M-1001
 252,000 EGP
 ```
@@ -1187,7 +1191,7 @@ Where:
 Clear Results
 ```
 
-clears execution and bank history but keeps the prepared batch.
+clears execution and bank history but keeps the prepared payout.
 
 And:
 
@@ -1195,7 +1199,7 @@ And:
 Reset Entire Scenario
 ```
 
-returns the application to the state before `Prepare Payout Batch`.
+returns the application to the state before `Prepare Payout`.
 
 This is optional.
 
@@ -1218,19 +1222,19 @@ Scenario Mode:
 Workers:
 [ 2 ▼ ]
 
-[ Prepare Payout Batch ]
+[ Prepare Payout ]
 
 --------------------------------------------------
 Prepared Business State
 
-Batch: PB-9001
+Payout: PO-9001
 Merchant: M-1001
 Amount: 252,000 EGP
 Status: READY
 
 Outbox:
 EVT-5512
-PayoutBatchReady
+PayoutReady
 PENDING
 --------------------------------------------------
 
@@ -1263,7 +1267,7 @@ Result Summary
 Suggested APIs:
 
 ```text
-POST /api/payout-batches/prepare
+POST /api/payouts/prepare
 
 POST /api/scenarios/run
 {
@@ -1274,7 +1278,7 @@ POST /api/scenarios/run
 POST /api/scenarios/reset
 
 GET /api/scenarios/current
-GET /api/payout-batches/PB-9001
+GET /api/payouts/PO-9001
 GET /api/outbox-events
 GET /api/dispatch-attempts
 ```

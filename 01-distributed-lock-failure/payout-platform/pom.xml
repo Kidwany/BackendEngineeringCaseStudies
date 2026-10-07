@@ -9,7 +9,7 @@
 	</parent>
 	<artifactId>payout-platform</artifactId>
 	<name>payout-platform</name>
-	<description>Owns payout batches and publishes payout-ready events through the transactional outbox</description>
+	<description>Owns payoutes and publishes payout-ready events through the transactional outbox</description>
 
 	<dependencies>
 		<dependency>

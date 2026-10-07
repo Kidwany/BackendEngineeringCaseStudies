@@ -3,7 +3,9 @@ package com.casestudies.payoutdelivery.fakebank;
 import static com.tngtech.archunit.base.DescribedPredicate.not;
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage;
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAnyPackage;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods;
 import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
@@ -77,6 +79,28 @@ class ArchitectureTest {
             .that().resideInAPackage("..domain..")
             .should().dependOnClassesThat().resideInAnyPackage(
                     "jakarta.validation..", "com.fasterxml.jackson..", "tools.jackson..")
+            .allowEmptyShould(true);
+
+    // Value objects are immutable: records and enums pass, a class with a mutable field does not.
+    @ArchTest
+    static final ArchRule value_objects_are_immutable = classes()
+            .that().resideInAPackage("..domain.valueobject..")
+            .should().haveOnlyFinalFields()
+            .allowEmptyShould(true);
+
+    // Aggregates are composed of value objects, never the other way round.
+    @ArchTest
+    static final ArchRule value_objects_do_not_know_aggregates = noClasses()
+            .that().resideInAPackage("..domain.valueobject..")
+            .should().dependOnClassesThat().resideInAPackage("..domain.aggregate..")
+            .allowEmptyShould(true);
+
+    // Aggregate state changes go through intention-revealing methods (startDispatch), not setters.
+    @ArchTest
+    static final ArchRule aggregates_have_no_public_setters = noMethods()
+            .that().areDeclaredInClassesThat().resideInAPackage("..domain.aggregate..")
+            .and().arePublic()
+            .should().haveNameMatching("set[A-Z].*")
             .allowEmptyShould(true);
 
     // @Transactional on a use case is the one framework import the application layer gets.

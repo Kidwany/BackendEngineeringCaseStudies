@@ -41,28 +41,34 @@ Mark each item only after it is implemented and verified.
 - [x] Keep Spring out of domain logic.
 - [x] Keep Redis/Kafka/HTTP/JPA concerns outside domain.
 
-Layout per app: `<context>/{domain/{model,event,service,exception}, application/{port/in,port/out,service}, adapter/in/api/{controller,dto,mapper,error}, adapter/out/<tech>, config}`.
+Layout per app: `<context>/{domain/{aggregate,valueobject,event,service,exception}, application/{port/in,port/out,service}, adapter/in/api/{controller,dto,mapper,error}, adapter/out/<tech>, config}`.
 Contexts: `platform.payout`, `fakebank.bank`; the worker's context package arrives with its first class.
 Infrastructure is `adapter/out/<tech>` (persistence, kafka, redis, http) and the web adapter is `adapter/in/api`.
 Each package is created with its first real class (Phase 5 onward), not as an empty placeholder.
 The isolation items are enforced by each app's `ArchitectureTest` (ArchUnit): domain bans Spring, JPA/Hibernate/Flyway, Redis, Kafka and HTTP;
 application reaches infrastructure only through ports. Each rule was checked against deliberately violating classes.
+DDD building blocks are enforced too: value objects have only final fields and never depend on aggregates; aggregates have no public setters.
 
 ## Phase 5 — Payout Domain
 
-- [ ] Create PayoutBatch.
-- [ ] Add merchant ID.
-- [ ] Add amount.
-- [ ] Add currency.
-- [ ] Add READY status.
-- [ ] Add DISPATCHING status.
-- [ ] Add DISPATCHED status.
-- [ ] Add FAILED status if needed.
-- [ ] Add domain tests.
+- [x] Create Payout.
+- [x] Add merchant ID.
+- [x] Add amount.
+- [x] Add currency.
+- [x] Add READY status.
+- [x] Add DISPATCHING status.
+- [x] Add DISPATCHED status.
+- [x] Add FAILED status if needed.
+- [x] Add domain tests.
+
+`platform.payout.domain.aggregate`: `Payout`. `platform.payout.domain.valueobject`: typed `PayoutId` / `MerchantId`,
+`PayoutStatus`, and `Money` (amount + currency, held at the currency's minor-unit scale). Transitions: `prepare` → READY, `startDispatch` READY → DISPATCHING,
+`markDispatched` DISPATCHING → DISPATCHED, `markFailed` DISPATCHING → FAILED; anything else throws `IllegalPayoutTransitionException`.
+FAILED is kept for the bank failure modes (Phase 34).
 
 ## Phase 6 — Payout Platform Schema
 
-- [ ] Create payout_batches table.
+- [ ] Create payouts table.
 - [ ] Create outbox_events table.
 - [ ] Create payout_dispatch_attempts table.
 - [ ] Add indexes.
@@ -72,15 +78,15 @@ application reaches infrastructure only through ports. Each rule was checked aga
 ## Phase 7 — Deterministic Data
 
 - [ ] Seed Merchant M-1001.
-- [ ] Seed Payout Batch PB-9001.
+- [ ] Seed Payout PO-9001.
 - [ ] Set amount = 252,000 EGP.
 - [ ] Set status = READY.
 - [ ] Ensure reset can recreate the exact same state.
 
 ## Phase 8 — Transactional Outbox
 
-- [ ] Persist payout batch.
-- [ ] Persist PayoutBatchReady event in same transaction.
+- [ ] Persist payout.
+- [ ] Persist PayoutReady event in same transaction.
 - [ ] Verify atomic commit.
 - [ ] Add outbox status.
 - [ ] Add published timestamp.
@@ -98,9 +104,9 @@ application reaches infrastructure only through ports. Each rule was checked aga
 ## Phase 10 — Kafka Consumer
 
 - [ ] Configure consumer group.
-- [ ] Consume PayoutBatchReady.
+- [ ] Consume PayoutReady.
 - [ ] Include event ID.
-- [ ] Include batch ID.
+- [ ] Include payout ID.
 - [ ] Include merchant ID.
 - [ ] Include amount/currency.
 - [ ] Verify worker receives message.
@@ -116,7 +122,7 @@ application reaches infrastructure only through ports. Each rule was checked aga
 ## Phase 12 — Fake Bank Schema
 
 - [ ] Create bank_payouts table.
-- [ ] Add payout_batch_id.
+- [ ] Add payout_id.
 - [ ] Add merchant_id.
 - [ ] Add amount.
 - [ ] Add currency.
@@ -146,7 +152,7 @@ application reaches infrastructure only through ports. Each rule was checked aga
 
 - [ ] Define BankPayoutPort.
 - [ ] Implement HTTP adapter.
-- [ ] Send batch ID.
+- [ ] Send payout ID.
 - [ ] Send merchant ID.
 - [ ] Send amount/currency.
 - [ ] Prepare Idempotency-Key support.
@@ -156,7 +162,7 @@ application reaches infrastructure only through ports. Each rule was checked aga
 
 - [ ] Define DistributedLeasePort.
 - [ ] Implement Redis adapter.
-- [ ] Use `payout:batch:{batchId}`.
+- [ ] Use `payout:lease:{payoutId}`.
 - [ ] Set TTL to 10 seconds for demo.
 - [ ] Use unique owner ID.
 - [ ] Prevent one owner from deleting another owner's lock.
@@ -165,7 +171,7 @@ application reaches infrastructure only through ports. Each rule was checked aga
 ## Phase 17 — Dispatch Attempt History
 
 - [ ] Persist worker ID.
-- [ ] Persist batch ID.
+- [ ] Persist payout ID.
 - [ ] Persist strategy.
 - [ ] Persist lease owner.
 - [ ] Add nullable fencing token.
@@ -206,7 +212,7 @@ application reaches infrastructure only through ports. Each rule was checked aga
 
 ## Phase 20 — Verify Broken Result
 
-- [ ] Fake Bank DB contains 2 rows for PB-9001.
+- [ ] Fake Bank DB contains 2 rows for PO-9001.
 - [ ] Both rows contain 252,000 EGP.
 - [ ] One came from Worker B.
 - [ ] One came from Worker A.
@@ -216,7 +222,7 @@ application reaches infrastructure only through ports. Each rule was checked aga
 ## Phase 21 — Query APIs
 
 Payout Platform:
-- [ ] Get payout batch.
+- [ ] Get payout.
 - [ ] Get outbox events.
 - [ ] Get dispatch attempts.
 - [ ] Get scenario result.
@@ -242,7 +248,7 @@ Fake Bank:
 ## Phase 22B — Scenario Explanation
 
 - [ ] Add "What will happen?" panel.
-- [ ] Explain prepare batch step.
+- [ ] Explain prepare payout step.
 - [ ] Explain outbox commit.
 - [ ] Explain Kafka publication.
 - [ ] Explain worker competition.
@@ -266,12 +272,12 @@ Fake Bank:
 - [ ] Default worker count to 2.
 - [ ] Keep Worker A as deterministic delayed worker.
 
-## Phase 22D — Prepare Payout Batch Action
+## Phase 22D — Prepare Payout Action
 
-- [ ] Add `Prepare Payout Batch` button.
-- [ ] Call `POST /api/payout-batches/prepare`.
-- [ ] Create/update PB-9001.
-- [ ] Create PayoutBatchReady outbox event in same DB transaction.
+- [ ] Add `Prepare Payout` button.
+- [ ] Call `POST /api/payouts/prepare`.
+- [ ] Create/update PO-9001.
+- [ ] Create PayoutReady outbox event in same DB transaction.
 - [ ] Do NOT publish directly from frontend.
 - [ ] Show prepared payout data.
 - [ ] Show outbox event data.
@@ -292,7 +298,7 @@ Fake Bank:
 - [ ] Add `Run Scenario` button.
 - [ ] Send selected mode.
 - [ ] Send worker count.
-- [ ] Use deterministic PB-9001.
+- [ ] Use deterministic PO-9001.
 - [ ] Keep same amount and merchant.
 - [ ] Keep same timing between broken/protected runs.
 - [ ] Prevent accidental multiple simultaneous scenario runs.
@@ -316,13 +322,13 @@ Fake Bank:
 
 - [ ] Fetch persisted bank operations.
 - [ ] Show bank payout ID.
-- [ ] Show payout batch ID.
+- [ ] Show payout ID.
 - [ ] Show worker ID.
 - [ ] Show amount.
 - [ ] Show idempotency key where available.
 - [ ] Show received timestamp.
 - [ ] Show processing result.
-- [ ] Group by business payout batch.
+- [ ] Group by business payout.
 - [ ] Detect duplicates from persisted data.
 - [ ] Highlight duplicate rows.
 - [ ] Add DUPLICATE badge.
@@ -354,7 +360,7 @@ Protected:
 - [ ] Call scenario reset endpoint.
 - [ ] Delete payout dispatch attempts.
 - [ ] Delete/reset outbox scenario data.
-- [ ] Reset payout batch state.
+- [ ] Reset payout state.
 - [ ] Delete Fake Bank payout rows.
 - [ ] Delete Fake Bank request-attempt history if present.
 - [ ] Clear bank idempotency records.
@@ -383,11 +389,11 @@ Protected:
 
 ## Phase 23 — Duplicate Highlighting
 
-- [ ] Group bank payouts by payout_batch_id.
+- [ ] Group bank payouts by payout_id.
 - [ ] Highlight count > 1.
 - [ ] Add DUPLICATE badge.
 - [ ] Show Bank Requests Received.
-- [ ] Show Unique Payout Batches.
+- [ ] Show Unique Payouts.
 - [ ] Show Duplicate Bank Payouts.
 - [ ] Show Total Intended Amount.
 - [ ] Show Total Actual Amount.
@@ -397,7 +403,7 @@ Protected:
 
 Payout Platform:
 - [ ] Delete dispatch attempts.
-- [ ] Reset PB-9001 to READY.
+- [ ] Reset PO-9001 to READY.
 - [ ] Reset/recreate outbox state.
 - [ ] Clear Redis lease.
 
@@ -449,7 +455,7 @@ STOP here until the failure is fully understood.
 
 ## Phase 28 — Stable Business Idempotency Key
 
-- [ ] Define `payout:PB-9001`.
+- [ ] Define `payout:PO-9001`.
 - [ ] Do not use worker ID.
 - [ ] Do not use Kafka event ID.
 - [ ] Do not use retry ID.
@@ -470,7 +476,7 @@ STOP here until the failure is fully understood.
 Use identical inputs and timing.
 
 - [ ] Reset scenario.
-- [ ] Run PB-9001.
+- [ ] Run PO-9001.
 - [ ] Start Worker A.
 - [ ] A gets older token.
 - [ ] A validates.
