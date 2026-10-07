@@ -2,7 +2,17 @@
 
 Mark each item only after it is implemented and verified.
 
+Two branches, so the diff between them is the fix:
+
+- **Part 1 — `master` (Phases 1–25):** reproduce the failure only. Outbox, Kafka, Redis lease, a paused worker,
+  and a duplicate payout at the bank. No fencing tokens, no PROTECTED strategy, no idempotency keys.
+- **Part 2 — solution branch (Phases 26–32B):** fencing tokens, the PROTECTED strategy, and bank idempotency,
+  added as new migrations and code on top of `master`. Phase 32B collects the items moved out of Part 1.
+- **Part 3 — both branches (Phases 33–37):** experiments, docs and publishing. Items marked *(solution branch)* wait for it.
+
 ---
+
+# Part 1 — `master`: Reproduce the Failure
 
 ## Phase 1 — Repository Bootstrap
 
@@ -68,12 +78,18 @@ FAILED is kept for the bank failure modes (Phase 34).
 
 ## Phase 6 — Payout Platform Schema
 
-- [ ] Create payouts table.
-- [ ] Create outbox_events table.
-- [ ] Create payout_dispatch_attempts table.
-- [ ] Add indexes.
-- [ ] Add required migrations.
-- [ ] Verify schema in PostgreSQL.
+- [x] Create payouts table.
+- [x] Create outbox_events table.
+- [x] Create payout_dispatch_attempts table.
+- [x] Add indexes.
+- [x] Add required migrations.
+- [x] Verify schema in PostgreSQL.
+
+Migrations `V2__create_payouts`, `V3__create_outbox_events`, `V4__create_payout_dispatch_attempts`.
+Statuses and positive amount are CHECK constraints; an outbox row is PUBLISHED exactly when `published_at` is set;
+attempts reference `payouts`. No fencing token, strategy or REJECTED_STALE status on `master`; the solution branch adds them (Phase 26). Indexes: pending outbox rows (partial, for the publisher poll), outbox by aggregate,
+attempts by payout, payouts by merchant. `PayoutSchemaTest` covers constraints and indexes on a fresh Postgres;
+the compose DB was migrated to v4 and inspected with `\d`.
 
 ## Phase 7 — Deterministic Data
 
@@ -126,16 +142,14 @@ FAILED is kept for the bank failure modes (Phase 34).
 - [ ] Add merchant_id.
 - [ ] Add amount.
 - [ ] Add currency.
-- [ ] Add idempotency_key.
 - [ ] Add worker_id.
 - [ ] Add received_at.
 - [ ] Add status.
-- [ ] Do NOT enforce idempotency yet.
 
 ## Phase 13 — Fake Bank API
 
 - [ ] Add `POST /api/bank/payouts`.
-- [ ] Persist every request in broken mode.
+- [ ] Persist every request.
 - [ ] Return payout ID.
 - [ ] Verify duplicate requests create duplicate rows.
 
@@ -155,8 +169,6 @@ FAILED is kept for the bank failure modes (Phase 34).
 - [ ] Send payout ID.
 - [ ] Send merchant ID.
 - [ ] Send amount/currency.
-- [ ] Prepare Idempotency-Key support.
-- [ ] Keep idempotency disabled initially.
 
 ## Phase 16 — Redis Lease
 
@@ -172,9 +184,7 @@ FAILED is kept for the bank failure modes (Phase 34).
 
 - [ ] Persist worker ID.
 - [ ] Persist payout ID.
-- [ ] Persist strategy.
 - [ ] Persist lease owner.
-- [ ] Add nullable fencing token.
 - [ ] Persist started_at.
 - [ ] Persist lease_expires_at.
 - [ ] Persist validation_completed_at.
@@ -256,14 +266,10 @@ Fake Bank:
 - [ ] Explain lease expiration.
 - [ ] Explain Worker B takeover.
 - [ ] Explain stale Worker A resume.
-- [ ] Explain broken vs protected expected result.
-- [ ] Change explanation according to selected mode if useful.
+- [ ] Explain expected result: a duplicate payout at the bank.
 
 ## Phase 22C — Scenario Controls
 
-- [ ] Add Scenario Mode selector.
-- [ ] Add BROKEN option.
-- [ ] Add PROTECTED option.
 - [ ] Add worker-count selector.
 - [ ] Support 2 workers.
 - [ ] Support 3 workers.
@@ -296,11 +302,10 @@ Fake Bank:
 ## Phase 22F — Run Scenario Action
 
 - [ ] Add `Run Scenario` button.
-- [ ] Send selected mode.
 - [ ] Send worker count.
 - [ ] Use deterministic PO-9001.
 - [ ] Keep same amount and merchant.
-- [ ] Keep same timing between broken/protected runs.
+- [ ] Keep the same timing on every run.
 - [ ] Prevent accidental multiple simultaneous scenario runs.
 
 ## Phase 22G — Scenario Progress
@@ -325,18 +330,15 @@ Fake Bank:
 - [ ] Show payout ID.
 - [ ] Show worker ID.
 - [ ] Show amount.
-- [ ] Show idempotency key where available.
 - [ ] Show received timestamp.
 - [ ] Show processing result.
 - [ ] Group by business payout.
 - [ ] Detect duplicates from persisted data.
 - [ ] Highlight duplicate rows.
 - [ ] Add DUPLICATE badge.
-- [ ] Show IDEMPOTENT_REPLAY in protected mode.
 
 ## Phase 22I — Result Summary
 
-Broken:
 - [ ] Show FAILURE DETECTED.
 - [ ] Show selected worker count.
 - [ ] Show bank requests attempted.
@@ -344,15 +346,6 @@ Broken:
 - [ ] Show duplicate payout count.
 - [ ] Show intended amount.
 - [ ] Show actual bank amount.
-
-Protected:
-- [ ] Show PROTECTED.
-- [ ] Show selected worker count.
-- [ ] Show bank requests attempted.
-- [ ] Show actual financial payouts = 1.
-- [ ] Show idempotent replay count.
-- [ ] Show duplicate payout count = 0.
-- [ ] Show actual amount = intended amount.
 
 ## Phase 22J — Clear & Reset
 
@@ -363,9 +356,7 @@ Protected:
 - [ ] Reset payout state.
 - [ ] Delete Fake Bank payout rows.
 - [ ] Delete Fake Bank request-attempt history if present.
-- [ ] Clear bank idempotency records.
 - [ ] Clear Redis lease keys.
-- [ ] Reset fencing state.
 - [ ] Ensure old Kafka messages do not contaminate next logical run.
 - [ ] Clear frontend state.
 - [ ] Verify next run starts cleanly.
@@ -409,7 +400,6 @@ Payout Platform:
 
 Fake Bank:
 - [ ] Delete bank payout rows.
-- [ ] Clear idempotency state.
 - [ ] Reset behavior mode.
 
 Verification:
@@ -432,6 +422,10 @@ Verification:
 
 STOP here until the failure is fully understood.
 
+# Part 2 — Solution Branch: Fix the Failure
+
+Branch from `master` once Phase 25 is done. Never edit `master`'s migrations; add new ones.
+
 ## Phase 26 — Add Fencing Tokens
 
 - [ ] Design monotonic fencing token generation.
@@ -439,7 +433,8 @@ STOP here until the failure is fully understood.
 - [ ] Worker A gets older token.
 - [ ] Worker B gets newer token.
 - [ ] Persist token in dispatch attempts.
-- [ ] Add Flyway migration if needed.
+- [ ] Add `V5` migration: nullable `fencing_token`, `strategy` (BROKEN / PROTECTED), REJECTED_STALE attempt status.
+- [ ] Persist strategy.
 - [ ] Keep broken strategy unchanged.
 - [ ] Add protected strategy.
 
@@ -513,6 +508,28 @@ Protected:
 - [ ] Show 252,000 EGP total.
 - [ ] Show duplicate count = 0.
 
+## Phase 32B — Solution Additions to Part 1 Phases
+
+Fake Bank (Phases 12, 13, 15, 24):
+- [ ] Add `idempotency_key` to `bank_payouts` (new migration).
+- [ ] Send `Idempotency-Key` from the bank adapter.
+- [ ] Clear idempotency state on reset.
+
+Frontend (Phases 22B–22J):
+- [ ] Add Scenario Mode selector with BROKEN and PROTECTED options.
+- [ ] Send selected mode when running the scenario.
+- [ ] Keep the same timing between broken and protected runs.
+- [ ] Explain broken vs protected expected result; change explanation by mode.
+- [ ] Show idempotency key in the bank operations table.
+- [ ] Show IDEMPOTENT_REPLAY rows.
+- [ ] Protected result summary: show PROTECTED, selected worker count, bank requests attempted,
+      actual financial payouts = 1, idempotent replay count, duplicate payout count = 0, actual amount = intended amount.
+- [ ] Clear bank idempotency records and fencing state on Clear & Reset.
+
+---
+
+# Part 3 — Both Branches
+
 ## Phase 33 — Kafka Reliability Experiments
 
 Only after core scenario works:
@@ -520,7 +537,7 @@ Only after core scenario works:
 - [ ] Redeliver same Kafka event.
 - [ ] Restart consumer after processing.
 - [ ] Simulate consumer rebalance.
-- [ ] Verify bank idempotency still protects payout.
+- [ ] Verify bank idempotency still protects payout. *(solution branch)*
 
 ## Phase 34 — Fake Bank Failure Experiments
 
@@ -530,7 +547,7 @@ Only after core scenario works:
 - [ ] PROCESS_THEN_DELAY_RESPONSE.
 - [ ] RETURN_500.
 - [ ] TIMEOUT.
-- [ ] Verify retries do not duplicate payout when idempotency is enabled.
+- [ ] Verify retries do not duplicate payout when idempotency is enabled. *(solution branch)*
 
 ## Phase 35 — Documentation
 
@@ -539,11 +556,11 @@ Only after core scenario works:
 - [ ] Explain lease expiration.
 - [ ] Explain stale worker.
 - [ ] Explain check-then-act gap.
-- [ ] Explain fencing.
-- [ ] Explain fencing limitation for external APIs.
-- [ ] Explain stable business idempotency.
+- [ ] Explain fencing. *(solution branch)*
+- [ ] Explain fencing limitation for external APIs. *(solution branch)*
+- [ ] Explain stable business idempotency. *(solution branch)*
 - [ ] Add broken sequence diagram.
-- [ ] Add protected sequence diagram.
+- [ ] Add protected sequence diagram. *(solution branch)*
 
 ## Phase 36 — Repository Quality
 
@@ -560,13 +577,13 @@ Only after core scenario works:
 - [ ] Broken scenario reliably duplicates payout.
 - [ ] Duplicate is visible in Fake Bank DB.
 - [ ] Duplicate is visible in UI.
-- [ ] Protected scenario uses identical data/timing.
-- [ ] Protected scenario creates one financial payout.
-- [ ] Replay is visible.
+- [ ] Protected scenario uses identical data/timing. *(solution branch)*
+- [ ] Protected scenario creates one financial payout. *(solution branch)*
+- [ ] Replay is visible. *(solution branch)*
 - [ ] Outbox role is documented correctly.
 - [ ] Kafka role is documented correctly.
-- [ ] Fencing limitation is documented correctly.
-- [ ] Idempotency role is documented correctly.
+- [ ] Fencing limitation is documented correctly. *(solution branch)*
+- [ ] Idempotency role is documented correctly. *(solution branch)*
 
 Final takeaway:
 
