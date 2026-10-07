@@ -24,6 +24,12 @@ class ArchitectureTest {
             "jakarta.persistence..", "jakarta.transaction..", "org.hibernate..",
             "org.springframework.data..", "org.flywaydb.."};
 
+    private static final String[] KAFKA = {"org.apache.kafka..", "org.springframework.kafka.."};
+
+    private static final String[] HTTP = {
+            "java.net.http..", "jakarta.servlet..", "org.springframework.web..",
+            "org.springframework.http..", "org.apache.hc..", "okhttp3.."};
+
     @ArchTest
     static final ArchRule dependencies_point_inward = layeredArchitecture()
             .consideringOnlyDependenciesInLayers()
@@ -55,6 +61,18 @@ class ArchitectureTest {
             .allowEmptyShould(true);
 
     @ArchTest
+    static final ArchRule domain_has_no_kafka_dependencies = noClasses()
+            .that().resideInAPackage("..domain..")
+            .should().dependOnClassesThat().resideInAnyPackage(KAFKA)
+            .allowEmptyShould(true);
+
+    @ArchTest
+    static final ArchRule domain_has_no_http_dependencies = noClasses()
+            .that().resideInAPackage("..domain..")
+            .should().dependOnClassesThat().resideInAnyPackage(HTTP)
+            .allowEmptyShould(true);
+
+    @ArchTest
     static final ArchRule domain_has_no_serialization_or_validation_annotations = noClasses()
             .that().resideInAPackage("..domain..")
             .should().dependOnClassesThat().resideInAnyPackage(
@@ -67,7 +85,9 @@ class ArchitectureTest {
             .that().resideInAPackage("..application..")
             .should().dependOnClassesThat(
                     resideInAnyPackage("org.springframework..", "jakarta.persistence..",
-                            "org.hibernate..", "io.lettuce..", "redis.clients..", "org.redisson..")
+                            "org.hibernate..", "io.lettuce..", "redis.clients..", "org.redisson..",
+                            "org.apache.kafka..", "java.net.http..", "jakarta.servlet..",
+                            "org.apache.hc..", "okhttp3..")
                             .and(not(resideInAPackage("org.springframework.transaction.annotation.."))))
             .allowEmptyShould(true);
 

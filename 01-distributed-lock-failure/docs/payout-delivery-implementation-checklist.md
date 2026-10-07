@@ -34,12 +34,19 @@ Mark each item only after it is implemented and verified.
 
 ## Phase 4 — Hexagonal Structure
 
-- [ ] Create domain layer.
-- [ ] Create application layer.
-- [ ] Create infrastructure adapters.
-- [ ] Create web adapters.
-- [ ] Keep Spring out of domain logic.
-- [ ] Keep Redis/Kafka/HTTP/JPA concerns outside domain.
+- [x] Create domain layer.
+- [x] Create application layer.
+- [x] Create infrastructure adapters.
+- [x] Create web adapters.
+- [x] Keep Spring out of domain logic.
+- [x] Keep Redis/Kafka/HTTP/JPA concerns outside domain.
+
+Layout per app: `<context>/{domain/{model,event,service,exception}, application/{port/in,port/out,service}, adapter/in/api/{controller,dto,mapper,error}, adapter/out/<tech>, config}`.
+Contexts: `platform.payout`, `fakebank.bank`; the worker's context package arrives with its first class.
+Infrastructure is `adapter/out/<tech>` (persistence, kafka, redis, http) and the web adapter is `adapter/in/api`.
+Each package is created with its first real class (Phase 5 onward), not as an empty placeholder.
+The isolation items are enforced by each app's `ArchitectureTest` (ArchUnit): domain bans Spring, JPA/Hibernate/Flyway, Redis, Kafka and HTTP;
+application reaches infrastructure only through ports. Each rule was checked against deliberately violating classes.
 
 ## Phase 5 — Payout Domain
 
