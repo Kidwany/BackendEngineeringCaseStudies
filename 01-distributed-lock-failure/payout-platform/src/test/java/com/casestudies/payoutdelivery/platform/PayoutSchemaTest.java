@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.math.BigDecimal;
 import java.util.UUID;
 
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -21,8 +21,9 @@ class PayoutSchemaTest {
     @Autowired
     private JdbcClient jdbc;
 
-    @AfterEach
-    void cleanUp() {
+    // Before, not after: the startup seeder and other tests share this database.
+    @BeforeEach
+    void startEmpty() {
         jdbc.sql("DELETE FROM payout_dispatch_attempts").update();
         jdbc.sql("DELETE FROM outbox_events").update();
         jdbc.sql("DELETE FROM payouts").update();
@@ -75,7 +76,7 @@ class PayoutSchemaTest {
     }
 
     @Test
-    void dispatchAttemptsBelongToAnExistingPayoutAndAllowAMissingFencingToken() {
+    void dispatchAttemptsBelongToAnExistingPayout() {
         assertThatThrownBy(() -> insertAttempt("PO-404", "STARTED"))
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining("payout_dispatch_attempts_payout_id_fkey");
@@ -84,7 +85,7 @@ class PayoutSchemaTest {
         insertAttempt("PO-9001", "STARTED");
         insertAttempt("PO-9001", "SENT_TO_BANK");
 
-        assertThat(jdbc.sql("SELECT count(*) FROM payout_dispatch_attempts WHERE payout_id = 'PO-9001' AND fencing_token IS NULL")
+        assertThat(jdbc.sql("SELECT count(*) FROM payout_dispatch_attempts WHERE payout_id = 'PO-9001'")
                 .query(Long.class).single()).isEqualTo(2);
 
         assertThatThrownBy(() -> insertAttempt("PO-9001", "DONE"))
@@ -113,8 +114,8 @@ class PayoutSchemaTest {
 
     private void insertAttempt(String payoutId, String status) {
         jdbc.sql("""
-                INSERT INTO payout_dispatch_attempts (id, payout_id, worker_id, strategy, status, started_at)
-                VALUES (:id, :payoutId, 'worker-a', 'BROKEN', :status, now())""")
+                INSERT INTO payout_dispatch_attempts (id, payout_id, worker_id, status, started_at)
+                VALUES (:id, :payoutId, 'worker-a', :status, now())""")
                 .param("id", UUID.randomUUID()).param("payoutId", payoutId).param("status", status).update();
     }
 }

@@ -29,6 +29,23 @@ class PayoutTest {
         assertThat(payout.status()).isEqualTo(PayoutStatus.READY);
     }
 
+    @Test
+    void restoredPayoutKeepsItsStatusAndCanContinueFromIt() {
+        Payout payout = Payout.restore(PAYOUT_ID, MERCHANT, AMOUNT, PayoutStatus.DISPATCHING);
+
+        assertThat(payout.status()).isEqualTo(PayoutStatus.DISPATCHING);
+        payout.markDispatched();
+        assertThat(payout.status()).isEqualTo(PayoutStatus.DISPATCHED);
+    }
+
+    @Test
+    void restoreStillEnforcesInvariants() {
+        assertThatThrownBy(() -> Payout.restore(PAYOUT_ID, MERCHANT, Money.of("0", "EGP"), PayoutStatus.READY))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> Payout.restore(PAYOUT_ID, MERCHANT, AMOUNT, null))
+                .isInstanceOf(NullPointerException.class);
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"0", "-1"})
     void rejectsNonPositiveAmount(String amount) {

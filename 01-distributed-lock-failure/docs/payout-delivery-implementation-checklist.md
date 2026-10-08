@@ -93,11 +93,17 @@ the compose DB was migrated to v4 and inspected with `\d`.
 
 ## Phase 7 — Deterministic Data
 
-- [ ] Seed Merchant M-1001.
-- [ ] Seed Payout PO-9001.
-- [ ] Set amount = 252,000 EGP.
-- [ ] Set status = READY.
-- [ ] Ensure reset can recreate the exact same state.
+- [x] Seed Merchant M-1001.
+- [x] Seed Payout PO-9001.
+- [x] Set amount = 252,000 EGP.
+- [x] Set status = READY.
+- [x] Ensure reset can recreate the exact same state.
+
+The scenario values live once in `ScenarioPayout` (application layer), not in a SQL seed, so seed, reset and
+prepare (Phase 22D) cannot drift apart. M-1001 is a merchant ID on the payout; merchants belong to another context,
+so there is no merchants table. `SeedScenarioPayoutUseCase` runs at startup and only inserts PO-9001 if missing,
+so a restart mid-scenario changes nothing. `ResetScenarioPayoutUseCase` overwrites it to READY / 252,000 EGP from any state;
+Phase 24 builds the full reset on it. Covered by `ScenarioPayoutServiceTest` and `ScenarioPayoutPersistenceTest`.
 
 ## Phase 8 — Transactional Outbox
 

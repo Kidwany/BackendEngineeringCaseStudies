@@ -34,6 +34,10 @@ public class Payout {
         return new Payout(id, merchantId, amount, READY);
     }
 
+    public static Payout restore(PayoutId id, MerchantId merchantId, Money amount, PayoutStatus status) {
+        return new Payout(id, merchantId, amount, status);
+    }
+
     public void startDispatch() {
         transition(READY, DISPATCHING);
     }
