@@ -107,12 +107,19 @@ Phase 24 builds the full reset on it. Covered by `ScenarioPayoutServiceTest` and
 
 ## Phase 8 — Transactional Outbox
 
-- [ ] Persist payout.
-- [ ] Persist PayoutReady event in same transaction.
-- [ ] Verify atomic commit.
-- [ ] Add outbox status.
-- [ ] Add published timestamp.
-- [ ] Add integration test.
+- [x] Persist payout.
+- [x] Persist PayoutReady event in same transaction.
+- [x] Verify atomic commit.
+- [x] Add outbox status.
+- [x] Add published timestamp.
+- [x] Add integration test.
+
+`PreparePayoutUseCase` resets PO-9001 to READY and appends a `PayoutReady` domain event through the `OutboxRepository` port,
+in one `@Transactional` use case; nothing talks to Kafka here. The JPA adapter stores the event as a PENDING `outbox_events` row
+(`published_at` null) with a plain-field JSON payload: eventId, payoutId, merchantId, amount, currency, occurredAt — the
+contract the worker reads in Phase 10. Every prepare is a new event, so preparing twice gives two PENDING rows.
+`TransactionalOutboxTest` checks the committed rows; `TransactionalOutboxRollbackTest` fails the outbox write after the
+payout was saved and checks the payout change rolled back (it was confirmed to fail with `@Transactional` removed).
 
 ## Phase 9 — Outbox Publisher
 

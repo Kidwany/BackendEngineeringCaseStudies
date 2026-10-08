@@ -2,13 +2,8 @@ package com.casestudies.payoutdelivery.platform.payout.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-
 import org.junit.jupiter.api.Test;
 
-import com.casestudies.payoutdelivery.platform.payout.application.port.out.PayoutRepository;
 import com.casestudies.payoutdelivery.platform.payout.domain.aggregate.Payout;
 import com.casestudies.payoutdelivery.platform.payout.domain.valueobject.MerchantId;
 import com.casestudies.payoutdelivery.platform.payout.domain.valueobject.Money;
@@ -72,26 +67,5 @@ class ScenarioPayoutServiceTest {
         assertThat(payout.merchantId()).isEqualTo(MerchantId.of("M-1001"));
         assertThat(payout.amount()).isEqualTo(Money.of("252000", "EGP"));
         assertThat(payout.status()).isEqualTo(PayoutStatus.READY);
-    }
-
-    private static final class InMemoryPayoutRepository implements PayoutRepository {
-
-        private final Map<PayoutId, Payout> rows = new HashMap<>();
-
-        @Override
-        public Optional<Payout> findById(PayoutId id) {
-            Payout row = rows.get(id);
-            return row == null ? Optional.empty()
-                    : Optional.of(Payout.restore(row.id(), row.merchantId(), row.amount(), row.status()));
-        }
-
-        @Override
-        public void save(Payout payout) {
-            rows.put(payout.id(), Payout.restore(payout.id(), payout.merchantId(), payout.amount(), payout.status()));
-        }
-
-        int count() {
-            return rows.size();
-        }
     }
 }
