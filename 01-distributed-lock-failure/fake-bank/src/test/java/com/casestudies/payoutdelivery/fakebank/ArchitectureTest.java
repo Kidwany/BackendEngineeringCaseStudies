@@ -39,7 +39,7 @@ class ArchitectureTest {
             .layer("Domain").definedBy("..domain..")
             .layer("Application").definedBy("..application..")
             .layer("Adapters").definedBy("..adapter..")
-            .layer("Config").definedBy("..config..")
+            .layer("Config").definedBy("com.casestudies.payoutdelivery..config..")
             .whereLayer("Adapters").mayOnlyBeAccessedByLayers("Config")
             .whereLayer("Application").mayOnlyBeAccessedByLayers("Adapters", "Config")
             .whereLayer("Domain").mayOnlyBeAccessedByLayers("Application", "Adapters", "Config");
@@ -115,11 +115,13 @@ class ArchitectureTest {
                             .and(not(resideInAPackage("org.springframework.transaction.annotation.."))))
             .allowEmptyShould(true);
 
+    // Config is anchored to this codebase: a bare ..config.. also matches framework packages
+    // such as org.springframework.kafka.config, which adapters legitimately use.
     @ArchTest
     static final ArchRule infrastructure_depends_inward_through_ports = noClasses()
             .that().resideInAPackage("..adapter.out..")
             .should().dependOnClassesThat().resideInAnyPackage(
-                    "..application.service..", "..application.port.in..", "..config..")
+                    "..application.service..", "..application.port.in..", "com.casestudies.payoutdelivery..config..")
             .allowEmptyShould(true);
 
     @ArchTest

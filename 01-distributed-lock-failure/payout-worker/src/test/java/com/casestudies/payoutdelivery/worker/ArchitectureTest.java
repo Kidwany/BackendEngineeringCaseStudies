@@ -39,7 +39,7 @@ class ArchitectureTest {
             .layer("Domain").definedBy("..domain..")
             .layer("Application").definedBy("..application..")
             .layer("Adapters").definedBy("..adapter..")
-            .layer("Config").definedBy("..config..")
+            .layer("Config").definedBy("com.casestudies.payoutdelivery..config..")
             .whereLayer("Adapters").mayOnlyBeAccessedByLayers("Config")
             .whereLayer("Application").mayOnlyBeAccessedByLayers("Adapters", "Config")
             .whereLayer("Domain").mayOnlyBeAccessedByLayers("Application", "Adapters", "Config");
@@ -81,21 +81,18 @@ class ArchitectureTest {
                     "jakarta.validation..", "com.fasterxml.jackson..", "tools.jackson..")
             .allowEmptyShould(true);
 
-    // Value objects are immutable: records and enums pass, a class with a mutable field does not.
     @ArchTest
     static final ArchRule value_objects_are_immutable = classes()
             .that().resideInAPackage("..domain.valueobject..")
             .should().haveOnlyFinalFields()
             .allowEmptyShould(true);
 
-    // Aggregates are composed of value objects, never the other way round.
     @ArchTest
     static final ArchRule value_objects_do_not_know_aggregates = noClasses()
             .that().resideInAPackage("..domain.valueobject..")
             .should().dependOnClassesThat().resideInAPackage("..domain.aggregate..")
             .allowEmptyShould(true);
 
-    // Aggregate state changes go through intention-revealing methods (startDispatch), not setters.
     @ArchTest
     static final ArchRule aggregates_have_no_public_setters = noMethods()
             .that().areDeclaredInClassesThat().resideInAPackage("..domain.aggregate..")
@@ -103,7 +100,6 @@ class ArchitectureTest {
             .should().haveNameMatching("set[A-Z].*")
             .allowEmptyShould(true);
 
-    // @Transactional on a use case is the one framework import the application layer gets.
     @ArchTest
     static final ArchRule application_reaches_infrastructure_only_through_ports = noClasses()
             .that().resideInAPackage("..application..")
@@ -115,11 +111,12 @@ class ArchitectureTest {
                             .and(not(resideInAPackage("org.springframework.transaction.annotation.."))))
             .allowEmptyShould(true);
 
+
     @ArchTest
     static final ArchRule infrastructure_depends_inward_through_ports = noClasses()
             .that().resideInAPackage("..adapter.out..")
             .should().dependOnClassesThat().resideInAnyPackage(
-                    "..application.service..", "..application.port.in..", "..config..")
+                    "..application.service..", "..application.port.in..", "com.casestudies.payoutdelivery..config..")
             .allowEmptyShould(true);
 
     @ArchTest
@@ -129,8 +126,7 @@ class ArchitectureTest {
                     "..application.service..", "..application.port.out..", "..adapter.out..")
             .allowEmptyShould(true);
 
-    // Controllers map DTO -> command -> one use case -> DTO. Anything that would let them
-    // do the work themselves (domain services, repositories, transactions, Redis) is off limits.
+
     @ArchTest
     static final ArchRule controllers_hold_no_business_logic = noClasses()
             .that().resideInAPackage("..adapter.in.api.controller..")

@@ -123,12 +123,27 @@ payout was saved and checks the payout change rolled back (it was confirmed to f
 
 ## Phase 9 — Outbox Publisher
 
-- [ ] Define OutboxPublisherPort.
-- [ ] Implement Kafka publisher adapter.
-- [ ] Poll unpublished rows.
-- [ ] Publish to `payout-ready`.
-- [ ] Mark published event.
-- [ ] Verify Kafka receives message.
+- [x] Define OutboxPublisherPort.
+- [x] Implement Kafka publisher adapter.
+- [x] Poll unpublished rows.
+- [x] Publish to `payout-ready`.
+- [x] Mark published event.
+- [x] Verify Kafka receives message.
+
+`PublishOutboxUseCase` reads up to `batch-size` PENDING rows oldest first and handles one at a time: publish through
+`OutboxPublisherPort`, wait for the broker's ack, then mark it PUBLISHED with `published_at`. The use case is not
+`@Transactional` on purpose. If a send fails, the rows already published keep their marks, and the failed row and the
+rows after it stay PENDING for the next poll, in order. Delivery is at-least-once: a crash between the ack and the
+mark publishes the event again, which is why the worker cannot treat Kafka delivery as exactly-once. The mark only
+changes rows that are still PENDING. `KafkaOutboxPublisherAdapter` sends the stored JSON payload unchanged, keyed by
+payout ID. `payout-ready` is created at startup with one partition. `OutboxPublishScheduler` (`adapter/in/scheduler`)
+polls with a fixed delay (`payout.outbox.publisher.poll-interval`, 500ms). `payout.outbox.publisher.enabled` turns it
+off, and `src/test/resources/config/application.yml` does that for every test, so the PENDING-row tests don't race
+the poller. `PublishOutboxServiceTest` covers ordering, batching and failure handling. `OutboxPublisherTest` turns
+the poller back on, prepares PO-9001, reads the event from `payout-ready` on a Kafka container (key PO-9001, payload
+fields intact), and waits for the row to become PUBLISHED.
+The ArchitectureTest `..config..` patterns now start with `com.casestudies.payoutdelivery`, because the bare pattern
+also matched `org.springframework.kafka.config`.
 
 ## Phase 10 — Kafka Consumer
 

@@ -1,0 +1,7 @@
+# Loaded on top of src/main/resources/application.yml (config/ wins over the classpath root).
+# The outbox poller is off in tests, so tests that check PENDING rows are not racing it;
+# OutboxPublisherTest turns it back on.
+payout:
+  outbox:
+    publisher:
+      enabled: false

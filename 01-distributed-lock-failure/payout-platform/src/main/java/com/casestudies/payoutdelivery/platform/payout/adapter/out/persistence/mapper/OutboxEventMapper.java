@@ -6,6 +6,7 @@ import java.time.Instant;
 import org.springframework.stereotype.Component;
 
 import com.casestudies.payoutdelivery.platform.payout.adapter.out.persistence.Entity.OutboxEventJpaEntity;
+import com.casestudies.payoutdelivery.platform.payout.application.port.out.OutboxMessage;
 import com.casestudies.payoutdelivery.platform.payout.domain.event.PayoutReady;
 
 import tools.jackson.databind.json.JsonMapper;
@@ -33,6 +34,10 @@ public class OutboxEventMapper {
                 event.occurredAt());
         return OutboxEventJpaEntity.pending(
                 event.eventId(), event.payoutId().value(), PAYOUT_READY, json.writeValueAsString(payload), event.occurredAt());
+    }
+
+    public OutboxMessage toMessage(OutboxEventJpaEntity entity) {
+        return new OutboxMessage(entity.getId(), entity.getAggregateId(), entity.getEventType(), entity.getPayload());
     }
 
     record PayoutReadyPayload(String eventId, String payoutId, String merchantId, BigDecimal amount, String currency,

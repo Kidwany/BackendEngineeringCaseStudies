@@ -6,12 +6,15 @@ spring:
     username: payout
     password: payout
   jpa:
-    # Flyway owns the schema (db/migration). Hibernate only checks entities against it.
     hibernate:
       ddl-auto: validate
     open-in-view: false
   kafka:
     bootstrap-servers: localhost:9401
+    producer:
+      acks: all
+      properties:
+        enable.idempotence: true
 
 server:
   port: 8101
@@ -24,3 +27,10 @@ management:
   endpoint:
     health:
       show-components: always
+
+payout:
+  outbox:
+    publisher:
+      enabled: true
+      poll-interval: 500ms
+      batch-size: 50
