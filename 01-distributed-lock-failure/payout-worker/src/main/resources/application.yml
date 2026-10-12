@@ -7,6 +7,11 @@ spring:
       port: 6301
   kafka:
     bootstrap-servers: localhost:9401
+    consumer:
+      group-id: payout-workers
+      auto-offset-reset: earliest
+    listener:
+      ack-mode: record
 
 fake-bank:
   base-url: ${FAKE_BANK_BASE_URL:http://localhost:8103}

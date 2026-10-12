@@ -19,7 +19,7 @@ class KafkaOutboxPublisherAdapter implements OutboxPublisherPort {
 
     private final KafkaTemplate<String, String> kafka;
 
-    KafkaOutboxPublisherAdapter(KafkaTemplate<String, String> kafka) {
+    public KafkaOutboxPublisherAdapter(KafkaTemplate<String, String> kafka) {
         this.kafka = kafka;
     }
 

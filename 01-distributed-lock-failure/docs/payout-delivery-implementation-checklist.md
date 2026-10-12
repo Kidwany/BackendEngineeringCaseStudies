@@ -147,13 +147,26 @@ also matched `org.springframework.kafka.config`.
 
 ## Phase 10 — Kafka Consumer
 
-- [ ] Configure consumer group.
-- [ ] Consume PayoutReady.
-- [ ] Include event ID.
-- [ ] Include payout ID.
-- [ ] Include merchant ID.
-- [ ] Include amount/currency.
-- [ ] Verify worker receives message.
+- [x] Configure consumer group.
+- [x] Consume PayoutReady.
+- [x] Include event ID.
+- [x] Include payout ID.
+- [x] Include merchant ID.
+- [x] Include amount/currency.
+- [x] Verify worker receives message.
+
+The worker's context is `worker.dispatch`. It has its own `PayoutId`, `MerchantId` and `Money` value objects, with the
+same rules as the platform's. Nothing is shared across apps: the Kafka message is the only contract between them.
+`PayoutReadyListener` (`adapter/in/kafka`) reads `payout-ready` and maps the JSON to `PayoutReadyMessage`, then to a
+`PayoutReadyCommand` (event ID, payout ID, merchant ID, money, occurredAt) for `HandlePayoutReadyUseCase`. Unknown
+fields are ignored, so the platform can add fields without breaking the worker. A malformed message is logged and
+skipped instead of retried, because a retry can't fix it and would block the partition. All workers share the
+consumer group `payout-workers`. `auto-offset-reset: earliest` means a new group still reads events published before
+any worker started. `ack-mode: record` commits each offset only after `handle()` returns, so a crash mid-handle
+redelivers the event (at-least-once). For now `HandlePayoutReadyService` only logs the receipt; Phases 16–18 add the
+lease, the validation and the bank call. `PayoutReadyConsumerTest` sends the platform's JSONB payload format to a
+Kafka container and checks every field of the command the use case receives. It also checks that malformed events
+are skipped and the next valid one is still handled.
 
 ## Phase 11 — Fake Bank Application
 
