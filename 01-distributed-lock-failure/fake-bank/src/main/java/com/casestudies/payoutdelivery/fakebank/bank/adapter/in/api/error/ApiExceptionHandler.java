@@ -6,8 +6,10 @@ import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -22,6 +24,25 @@ class ApiExceptionHandler {
         problem.setTitle("Invalid request");
         problem.setType(URI.create("urn:problem:validation-failed"));
         problem.setProperty("errors", fieldErrors(ex));
+        return problem;
+    }
+
+    @ExceptionHandler({MissingRequestHeaderException.class, HttpMessageNotReadableException.class})
+    ProblemDetail onMalformedRequest(Exception ex) {
+        return badRequest(ex instanceof MissingRequestHeaderException missing
+                ? "Header " + missing.getHeaderName() + " is required."
+                : "Request body could not be read.");
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    ProblemDetail onRejectedValue(IllegalArgumentException ex) {
+        return badRequest(ex.getMessage());
+    }
+
+    private ProblemDetail badRequest(String detail) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
+        problem.setTitle("Invalid request");
+        problem.setType(URI.create("urn:problem:invalid-request"));
         return problem;
     }
 

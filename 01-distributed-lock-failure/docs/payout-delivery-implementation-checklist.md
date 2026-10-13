@@ -170,29 +170,45 @@ are skipped and the next valid one is still handled.
 
 ## Phase 11 — Fake Bank Application
 
-- [ ] Create separate Spring Boot service.
-- [ ] Add REST controller.
-- [ ] Add JPA.
-- [ ] Add Flyway.
-- [ ] Keep service intentionally small.
+- [x] Create separate Spring Boot service.
+- [x] Add REST controller.
+- [x] Add JPA.
+- [x] Add Flyway.
+- [x] Keep service intentionally small.
+
+Phases 11–13 were built as one slice, because a controller is only useful once it has a table and an endpoint.
+The app, its own Postgres, JPA (`validate`) and Flyway came from Phases 1–3. Context `fakebank.bank` has one aggregate,
+`BankPayout`, and one use case, `CreateBankPayoutUseCase`. Its `PayoutId`, `MerchantId` and `Money` are its own
+copies, the same as in the worker. `BankPayoutController` is the only controller.
 
 ## Phase 12 — Fake Bank Schema
 
-- [ ] Create bank_payouts table.
-- [ ] Add payout_id.
-- [ ] Add merchant_id.
-- [ ] Add amount.
-- [ ] Add currency.
-- [ ] Add worker_id.
-- [ ] Add received_at.
-- [ ] Add status.
+- [x] Create bank_payouts table.
+- [x] Add payout_id.
+- [x] Add merchant_id.
+- [x] Add amount.
+- [x] Add currency.
+- [x] Add worker_id.
+- [x] Add received_at.
+- [x] Add status.
+
+Migration `V2__create_bank_payouts`. The `id` is a bank-assigned UUID. `payout_id` has no unique constraint, so a
+duplicate request leaves a duplicate row. Amount must be positive. `status` allows only CREATED on `master`;
+the solution branch adds IDEMPOTENT_REPLAY (Phase 32B). `bank_payouts_payout_id_idx (payout_id, received_at)` is
+there for the duplicate and summary queries in Phase 21. `BankSchemaTest` covers duplicates, constraints and the index.
 
 ## Phase 13 — Fake Bank API
 
-- [ ] Add `POST /api/bank/payouts`.
-- [ ] Persist every request.
-- [ ] Return payout ID.
-- [ ] Verify duplicate requests create duplicate rows.
+- [x] Add `POST /api/bank/payouts`.
+- [x] Persist every request.
+- [x] Return payout ID.
+- [x] Verify duplicate requests create duplicate rows.
+
+Body `{payoutId, merchantId, amount, currency}`; the caller identifies itself with the required `X-Worker-Id` header,
+because the worker is diagnostic metadata, not part of the payout. Every valid request becomes a new CREATED row
+(no lookup by payout ID); the response is `201` with `bankPayoutId` and the stored fields. A missing header, an
+unreadable or invalid body, or an amount the currency can't hold is a `400` and persists nothing. `BankPayoutApiTest`
+sends PO-9001 twice (as worker-b then worker-a) and finds two rows with different bank payout IDs, 504,000 EGP in total.
 
 ## Phase 14 — Fake Bank Behavior Modes
 
