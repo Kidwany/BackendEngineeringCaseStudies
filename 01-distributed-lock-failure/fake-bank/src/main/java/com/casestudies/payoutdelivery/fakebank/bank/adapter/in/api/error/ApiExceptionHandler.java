@@ -13,6 +13,8 @@ import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import com.casestudies.payoutdelivery.fakebank.bank.domain.exception.SimulatedBankFailureException;
+import com.casestudies.payoutdelivery.fakebank.bank.domain.exception.SimulatedBankTimeoutException;
 
 @RestControllerAdvice
 class ApiExceptionHandler {
@@ -43,6 +45,22 @@ class ApiExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
         problem.setTitle("Invalid request");
         problem.setType(URI.create("urn:problem:invalid-request"));
+        return problem;
+    }
+
+    @ExceptionHandler(SimulatedBankFailureException.class)
+    ProblemDetail onSimulatedFailure(SimulatedBankFailureException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
+        problem.setTitle("Bank failure");
+        problem.setType(URI.create("urn:problem:simulated-bank-failure"));
+        return problem;
+    }
+
+    @ExceptionHandler(SimulatedBankTimeoutException.class)
+    ProblemDetail onSimulatedTimeout(SimulatedBankTimeoutException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.GATEWAY_TIMEOUT, ex.getMessage());
+        problem.setTitle("Bank timeout");
+        problem.setType(URI.create("urn:problem:simulated-bank-timeout"));
         return problem;
     }
 

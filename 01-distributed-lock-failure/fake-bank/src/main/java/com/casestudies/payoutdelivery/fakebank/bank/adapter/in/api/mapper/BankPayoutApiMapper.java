@@ -2,7 +2,7 @@ package com.casestudies.payoutdelivery.fakebank.bank.adapter.in.api.mapper;
 
 import com.casestudies.payoutdelivery.fakebank.bank.adapter.in.api.dto.BankPayoutResponse;
 import com.casestudies.payoutdelivery.fakebank.bank.adapter.in.api.dto.CreateBankPayoutRequest;
-import com.casestudies.payoutdelivery.fakebank.bank.application.port.in.CreateBankPayoutCommand;
+import com.casestudies.payoutdelivery.fakebank.bank.application.port.in.Command.CreateBankPayoutCommand;
 import com.casestudies.payoutdelivery.fakebank.bank.domain.aggregate.BankPayout;
 import com.casestudies.payoutdelivery.fakebank.bank.domain.valueobject.MerchantId;
 import com.casestudies.payoutdelivery.fakebank.bank.domain.valueobject.Money;

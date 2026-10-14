@@ -212,12 +212,26 @@ sends PO-9001 twice (as worker-b then worker-a) and finds two rows with differen
 
 ## Phase 14 — Fake Bank Behavior Modes
 
-- [ ] Add NORMAL.
-- [ ] Add DELAY_RESPONSE.
-- [ ] Add PROCESS_THEN_DELAY_RESPONSE.
-- [ ] Add RETURN_500.
-- [ ] Add TIMEOUT.
-- [ ] Make delay configurable.
+- [x] Add NORMAL.
+- [x] Add DELAY_RESPONSE.
+- [x] Add PROCESS_THEN_DELAY_RESPONSE.
+- [x] Add RETURN_500.
+- [x] Add TIMEOUT.
+- [x] Make delay configurable.
+
+`BankBehavior` (mode + delay) is a domain value object. It lives in `InMemoryBankBehaviorStore` (`adapter/out/memory`)
+behind the `BankBehaviorStore` port, so it can be changed at runtime without a restart, and Phase 24 can reset it.
+The startup value comes from `fake-bank.behavior.mode` / `fake-bank.behavior.delay` (NORMAL, 5s). `GET /api/bank/behavior`
+returns `{mode, delayMillis}`; `PUT` takes the same body. `mode` is required. `delayMillis` is optional (0–120,000);
+when it is missing, the current delay is kept. `CreateBankPayoutService` reads the mode on each request:
+NORMAL persists and responds; DELAY_RESPONSE waits, then persists and responds (a late success);
+PROCESS_THEN_DELAY_RESPONSE persists, then waits before it responds (the unknown outcome: a caller that times out
+first was still paid); RETURN_500 persists nothing and returns `500`; TIMEOUT holds the request for the delay, then
+returns `504` and persists nothing. `received_at` is when the request arrived, even when the row is written later.
+The use case is no longer `@Transactional`: its single save commits on its own, so the PROCESS_THEN_DELAY_RESPONSE
+row is visible before the delay starts and not only after the response. Waiting goes through a `Sleeper` port, so
+`CreateBankPayoutServiceTest` checks the order of save and wait without real sleeps. `BankBehaviorApiTest` runs each
+mode over HTTP. For PROCESS_THEN_DELAY_RESPONSE it sees the committed row while the request is still pending.
 
 ## Phase 15 — Bank Adapter
 

@@ -22,3 +22,8 @@ management:
   endpoint:
     health:
       show-components: always
+
+fake-bank:
+  behavior:
+    mode: NORMAL
+    delay: 5s

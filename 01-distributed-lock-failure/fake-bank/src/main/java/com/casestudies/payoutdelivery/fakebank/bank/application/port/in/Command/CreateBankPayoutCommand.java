@@ -1,4 +1,4 @@
-package com.casestudies.payoutdelivery.fakebank.bank.application.port.in;
+package com.casestudies.payoutdelivery.fakebank.bank.application.port.in.Command;
 
 import java.util.Objects;
 
