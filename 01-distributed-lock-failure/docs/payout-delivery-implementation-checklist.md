@@ -235,11 +235,24 @@ mode over HTTP. For PROCESS_THEN_DELAY_RESPONSE it sees the committed row while 
 
 ## Phase 15 — Bank Adapter
 
-- [ ] Define BankPayoutPort.
-- [ ] Implement HTTP adapter.
-- [ ] Send payout ID.
-- [ ] Send merchant ID.
-- [ ] Send amount/currency.
+- [x] Define BankPayoutPort.
+- [x] Implement HTTP adapter.
+- [x] Send payout ID.
+- [x] Send merchant ID.
+- [x] Send amount/currency.
+
+`BankPayoutPort.send(BankPayoutRequest)` takes `PayoutId`, `MerchantId`, `Money` and a new `WorkerId` value object, and
+returns a `BankPayoutReceipt` with the bank's `bankPayoutId`. `HttpBankPayoutAdapter` (`adapter/out/http`) posts
+`{payoutId, merchantId, amount, currency}` to `/api/bank/payouts` with the worker in `X-Worker-Id`, through a `RestClient`
+on the JDK HTTP client (`spring-boot-starter-restclient`). Failures become port exceptions, so no HTTP type reaches the
+application layer: a `4xx` is `BankRejectedException`; a `5xx` (RETURN_500, TIMEOUT's `504`) or a bank that can't be
+reached is `BankUnavailableException`; no answer within `fake-bank.read-timeout` (10s) is `BankTimeoutException`, whose
+outcome is unknown because the bank may already have paid (PROCESS_THEN_DELAY_RESPONSE). A connect timeout
+(`fake-bank.connect-timeout`, 2s) counts as unavailable, since the request never left. The adapter sends once and never
+retries; a retry would be a second source of duplicates on `master`. Nothing calls the port yet; Phase 18 does.
+`HttpBankPayoutAdapterTest` runs the adapter against a JDK `HttpServer` stub: path, header, the four body fields and
+the receipt, then `400`, `500`, `504`, a real read timeout and a refused connection. It was also run once against the
+compose Fake Bank, and the row arrived with every field and the worker ID.
 
 ## Phase 16 — Redis Lease
 

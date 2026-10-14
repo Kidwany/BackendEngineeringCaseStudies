@@ -13,6 +13,7 @@ class IdentifiersTest {
     void identifiersCompareByValue() {
         assertThat(PayoutId.of("PO-9001")).isEqualTo(PayoutId.of("PO-9001")).hasToString("PO-9001");
         assertThat(MerchantId.of("M-1001")).isEqualTo(MerchantId.of("M-1001")).hasToString("M-1001");
+        assertThat(WorkerId.of("worker-a")).isEqualTo(WorkerId.of("worker-a")).hasToString("worker-a");
     }
 
     @ParameterizedTest
@@ -20,11 +21,13 @@ class IdentifiersTest {
     void rejectBlankValues(String blank) {
         assertThatThrownBy(() -> PayoutId.of(blank)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> MerchantId.of(blank)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> WorkerId.of(blank)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void rejectNull() {
         assertThatThrownBy(() -> PayoutId.of(null)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> MerchantId.of(null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> WorkerId.of(null)).isInstanceOf(NullPointerException.class);
     }
 }

@@ -1,6 +1,7 @@
 package com.casestudies.payoutdelivery.fakebank;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -119,6 +120,12 @@ class BankPayoutApiTest {
                 .andExpect(jsonPath("$.detail").value("10.005 has more decimal places than EGP allows"));
 
         assertNothingPersisted();
+    }
+
+    @Test
+    void keepsSpringErrorStatuses() throws Exception {
+        mvc.perform(get("/api/bank/no-such-path")).andExpect(status().isNotFound());
+        mvc.perform(get("/api/bank/payouts")).andExpect(status().isMethodNotAllowed());
     }
 
     private ResultActions send(String workerId, String body) throws Exception {

@@ -15,6 +15,8 @@ spring:
 
 fake-bank:
   base-url: ${FAKE_BANK_BASE_URL:http://localhost:8103}
+  connect-timeout: 2s
+  read-timeout: 10s
 
 server:
   port: 8102
